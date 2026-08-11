@@ -1,6 +1,7 @@
 import streamlit as st
 import time
 
+from loader.pdf_loader import PDFLoader
 from services.vector_db import VectorDB
 from services.rag import RAGService
 
@@ -26,7 +27,13 @@ with st.sidebar:
 
     st.markdown("---")
 
-    st.write("### Settings")
+    st.write("### Upload PDFs")
+
+    uploaded_files = st.file_uploader(
+        "Choose PDF files",
+        type=["pdf"],
+        accept_multiple_files=True
+    )
 
     if st.button("🗑️ Clear Chat"):
 
@@ -34,34 +41,40 @@ with st.sidebar:
 
         st.rerun()
 
-    st.markdown("---")
-
-    st.success("Vector Database Loaded")
-
 
 # ---------------------------------------------------
 # Session State
 # ---------------------------------------------------
 
 if "messages" not in st.session_state:
-
     st.session_state.messages = []
 
 
 # ---------------------------------------------------
-# Load Database
+# Create Vector Database from Uploaded PDFs
 # ---------------------------------------------------
 
-def load_chain():
+chain = None
 
-    db = VectorDB.load()
+if uploaded_files:
 
-    chain = RAGService.create_chain(db)
+    with st.spinner("Processing uploaded PDFs..."):
 
-    return chain
+        try:
 
+            docs = PDFLoader.load_uploaded_pdfs(uploaded_files)
 
-chain = load_chain()
+            db = VectorDB.create(docs)
+
+            chain = RAGService.create_chain(db)
+
+            st.sidebar.success(
+                f"{len(uploaded_files)} PDF(s) loaded successfully"
+            )
+
+        except Exception as e:
+
+            st.sidebar.error(f"Error: {e}")
 
 
 # ---------------------------------------------------
@@ -70,7 +83,7 @@ chain = load_chain()
 
 st.title("📄 PDF Question Answering")
 
-st.caption("Ask questions about your PDF")
+st.caption("Upload PDF files and ask questions about them.")
 
 
 # ---------------------------------------------------
@@ -88,70 +101,64 @@ for message in st.session_state.messages:
 # User Input
 # ---------------------------------------------------
 
-question = st.chat_input("Ask a question about your PDF...")
+if chain:
 
-
-if question:
-
-    # Show User Question
-
-    st.session_state.messages.append(
-        {
-            "role": "user",
-            "content": question
-        }
+    question = st.chat_input(
+        "Ask a question about your uploaded PDFs..."
     )
 
-    with st.chat_message("user"):
+    if question:
 
-        st.markdown(question)
+        st.session_state.messages.append(
+            {
+                "role": "user",
+                "content": question
+            }
+        )
 
+        with st.chat_message("user"):
 
-    # Assistant
+            st.markdown(question)
 
-    with st.chat_message("assistant"):
+        with st.chat_message("assistant"):
 
-        with st.spinner("Searching document..."):
+            with st.spinner("Searching documents..."):
 
-            try:
+                try:
 
-                # Start timer
-                start_time = time.perf_counter()
+                    start_time = time.perf_counter()
 
-                # Run RAG
-                response = chain.invoke(
-                    {
-                        "input": question
-                    }
-                )
+                    response = chain.invoke(
+                        {
+                            "input": question
+                        }
+                    )
 
-                # Stop timer
-                end_time = time.perf_counter()
+                    end_time = time.perf_counter()
 
-                # Calculate response time
-                response_time = end_time - start_time
+                    response_time = end_time - start_time
 
-                # Get answer
-                answer = response["answer"]
+                    answer = response["answer"]
 
-                # Display answer
-                st.markdown(answer)
+                    st.markdown(answer)
 
-                # Display response time
-                st.caption(
-                    f"Response time: {response_time:.2f} seconds"
-                )
+                    st.caption(
+                        f"Response time: {response_time:.2f} seconds"
+                    )
 
-                # Save answer
-                st.session_state.messages.append(
-                    {
-                        "role": "assistant",
-                        "content": answer
-                    }
-                )
+                    st.session_state.messages.append(
+                        {
+                            "role": "assistant",
+                            "content": answer
+                        }
+                    )
 
-            except Exception as e:
+                except Exception as e:
 
-                st.error(f"Error: {e}")
+                    st.error(f"Error: {e}")
 
-                print(e)
+else:
+
+    st.info(
+        "Please upload one or more PDF files from the sidebar."
+    )

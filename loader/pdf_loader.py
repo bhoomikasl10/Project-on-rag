@@ -1,5 +1,6 @@
 from langchain_community.document_loaders import PyPDFLoader
 import os
+import tempfile
 
 
 class PDFLoader:
@@ -22,5 +23,28 @@ class PDFLoader:
                 documents = loader.load()
 
                 all_documents.extend(documents)
+
+        return all_documents
+
+    @staticmethod
+    def load_uploaded_pdfs(uploaded_files):
+        all_documents = []
+
+        for uploaded_file in uploaded_files:
+
+            with tempfile.NamedTemporaryFile(
+                delete=False,
+                suffix=".pdf"
+            ) as temp_file:
+
+                temp_file.write(uploaded_file.getbuffer())
+                temp_path = temp_file.name
+
+            loader = PyPDFLoader(temp_path)
+            documents = loader.load()
+
+            all_documents.extend(documents)
+
+            os.remove(temp_path)
 
         return all_documents

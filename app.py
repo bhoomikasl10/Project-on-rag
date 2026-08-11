@@ -1,5 +1,6 @@
 import streamlit as st
 import time
+import os
 
 from loader.pdf_loader import PDFLoader
 from services.vector_db import VectorDB
@@ -138,14 +139,38 @@ if chain:
 
                     response_time = end_time - start_time
 
+                    # Answer
                     answer = response["answer"]
 
                     st.markdown(answer)
 
+                    # ---------------------------------------------------
+                    # Source Citations
+                    # ---------------------------------------------------
+
+                    sources = set()
+
+                    for document in response.get("context", []):
+
+                        source = document.metadata.get("source")
+
+                        if source:
+                            sources.add(os.path.basename(source))
+
+                    if sources:
+
+                        st.markdown("### 📚 Sources")
+
+                        for source in sorted(sources):
+
+                            st.write(f"📄 {source}")
+
+                    # Response time
                     st.caption(
                         f"Response time: {response_time:.2f} seconds"
                     )
 
+                    # Save answer
                     st.session_state.messages.append(
                         {
                             "role": "assistant",

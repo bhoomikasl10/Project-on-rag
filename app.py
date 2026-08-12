@@ -113,10 +113,13 @@ if uploaded_files:
 
             db = VectorDB.create(docs)
 
+            db = VectorDB.create(docs)
+
             chain = RAGService.create_chain(
                 db,
+                docs,
                 top_k=top_k
-            )
+        )
 
             st.sidebar.success(
                 f"{len(uploaded_files)} PDF(s) loaded successfully"

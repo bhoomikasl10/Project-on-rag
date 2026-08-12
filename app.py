@@ -19,6 +19,14 @@ st.set_page_config(
 
 
 # ---------------------------------------------------
+# Session State
+# ---------------------------------------------------
+
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+
+# ---------------------------------------------------
 # Sidebar
 # ---------------------------------------------------
 
@@ -36,6 +44,40 @@ with st.sidebar:
         accept_multiple_files=True
     )
 
+    # ---------------------------------------------------
+    # Conversational Memory
+    # ---------------------------------------------------
+
+    st.markdown("---")
+
+    st.write("### 💬 Conversation Memory")
+
+    if st.session_state.messages:
+
+        for message in st.session_state.messages:
+
+            if message["role"] == "user":
+
+                st.markdown(
+                    f"**You:** {message['content']}"
+                )
+
+            elif message["role"] == "assistant":
+
+                st.markdown(
+                    f"**Bot:** {message['content']}"
+                )
+
+    else:
+
+        st.info("No conversation yet.")
+
+    # ---------------------------------------------------
+    # Top-K
+    # ---------------------------------------------------
+
+    st.markdown("---")
+
     top_k = st.slider(
         "Top-K Retrieved Documents",
         min_value=1,
@@ -44,19 +86,15 @@ with st.sidebar:
         step=1
     )
 
+    # ---------------------------------------------------
+    # Clear Chat
+    # ---------------------------------------------------
+
     if st.button("🗑️ Clear Chat"):
 
         st.session_state.messages = []
 
         st.rerun()
-
-
-# ---------------------------------------------------
-# Session State
-# ---------------------------------------------------
-
-if "messages" not in st.session_state:
-    st.session_state.messages = []
 
 
 # ---------------------------------------------------
@@ -95,7 +133,9 @@ if uploaded_files:
 
 st.title("📄 PDF Question Answering")
 
-st.caption("Upload PDF files and ask questions about them.")
+st.caption(
+    "Upload PDF files and ask questions about them."
+)
 
 
 # ---------------------------------------------------
@@ -140,9 +180,22 @@ if chain:
 
                     start_time = time.perf_counter()
 
+                    # Build conversation history
+                    chat_history = []
+
+                    for message in st.session_state.messages[:-1]:
+
+                        chat_history.append(
+                            (
+                                message["role"],
+                                message["content"]
+                            )
+                        )
+
                     response = chain.invoke(
                         {
-                            "input": question
+                            "input": question,
+                            "chat_history": chat_history
                         }
                     )
 
@@ -150,7 +203,10 @@ if chain:
 
                     response_time = end_time - start_time
 
+                    # ---------------------------------------------------
                     # Answer
+                    # ---------------------------------------------------
+
                     answer = response["answer"]
 
                     st.markdown(answer)
@@ -166,7 +222,10 @@ if chain:
                         source = document.metadata.get("source")
 
                         if source:
-                            sources.add(os.path.basename(source))
+
+                            sources.add(
+                                os.path.basename(source)
+                            )
 
                     if sources:
 
@@ -176,18 +235,27 @@ if chain:
 
                             st.write(f"📄 {source}")
 
-                    # Response time
+                    # ---------------------------------------------------
+                    # Response Time
+                    # ---------------------------------------------------
+
                     st.caption(
                         f"Response time: {response_time:.2f} seconds"
                     )
 
-                    # Save answer
+                    # ---------------------------------------------------
+                    # Save Answer
+                    # ---------------------------------------------------
+
                     st.session_state.messages.append(
                         {
                             "role": "assistant",
                             "content": answer
                         }
                     )
+
+                    # Refresh sidebar so new conversation appears
+                    st.rerun()
 
                 except Exception as e:
 

@@ -8,10 +8,10 @@ from services.llm import LLM
 class RAGService:
 
     @staticmethod
-    def create_chain(vector_db):
+    def create_chain(vector_db, top_k=3):
 
         retriever = vector_db.as_retriever(
-            search_kwargs={"k": 3}
+            search_kwargs={"k": top_k}
         )
 
         document_chain = create_stuff_documents_chain(

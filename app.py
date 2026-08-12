@@ -36,6 +36,14 @@ with st.sidebar:
         accept_multiple_files=True
     )
 
+    top_k = st.slider(
+        "Top-K Retrieved Documents",
+        min_value=1,
+        max_value=10,
+        value=3,
+        step=1
+    )
+
     if st.button("🗑️ Clear Chat"):
 
         st.session_state.messages = []
@@ -67,7 +75,10 @@ if uploaded_files:
 
             db = VectorDB.create(docs)
 
-            chain = RAGService.create_chain(db)
+            chain = RAGService.create_chain(
+                db,
+                top_k=top_k
+            )
 
             st.sidebar.success(
                 f"{len(uploaded_files)} PDF(s) loaded successfully"
